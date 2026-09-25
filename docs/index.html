@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nipe - Tor Gateway Engine & Security Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --surface: #0f141f;
+      --surface-border: #1e293b;
+      --card-bg: rgba(15, 20, 31, 0.85);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --tor-purple: #a855f7;
+      --tor-glow: rgba(168, 85, 247, 0.25);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-ui: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+    }
+
+    /* Header & Navigation */
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      background: rgba(7, 9, 14, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--tor-purple), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      box-shadow: 0 0 20px var(--tor-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-text span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .nav-stats {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .status-pill.inactive {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--danger);
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      header {
+        padding: 1rem;
+      }
+      .nav-stats {
+        gap: 0.75rem;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .card-badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      font-family: var(--font-mono);
+    }
+
+    /* Terminal Simulator */
+    .terminal {
+      background: #05070a;
+      border: 1px solid #1a2234;
+      border-radius: 12px;
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      height: 380px;
+    }
+
+    .terminal-topbar {
+      background: #0c1018;
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid #1a2234;
+    }
+
+    .term-btn {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+    .term-btn.red { background: #ef4444; }
+    .term-btn.yellow { background: #f59e0b; }
+    .term-btn.green { background: #10b981; }
+
+    .term-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+      flex-grow: 1;
+    }
+
+    .terminal-body {
+      padding: 1rem;
+      flex-grow: 1;
+      overflow-y: auto;
+      color: #94a3b8;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .term-line {
+      display: flex;
+      gap: 0.5rem;
+      word-break: break-all;
+    }
+
+    .term-prompt {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .term-cmd {
+      color: #f8fafc;
+    }
+
+    .term-out {
+      color: #38bdf8;
+      white-space: pre-wrap;
+      padding-left: 0.5rem;
+      border-left: 2px solid rgba(56, 189, 248, 0.2);
+    }
+    .term-out.success { color: #34d399; }
+    .term-out.err { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+
+    .term-input-row {
+      display: flex;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      background: #090c13;
+      border-top: 1px solid #1a2234;
+      gap: 0.5rem;
+    }
+
+    .term-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      flex-grow: 1;
+    }
+
+    /* Control Buttons */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1px solid var(--surface-border);
+      background: #131b2c;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #1e293b;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: #38bdf8;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+    }
+    .btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+    }
+
+    .btn.purple {
+      background: linear-gradient(135deg, #7c3aed, #9333ea);
+      border-color: #a855f7;
+      color: #fff;
+    }
+
+    .btn.danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    .btn.danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Circuit Route Visualization */
+    .circuit-chain {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+
+    .circuit-chain::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, #10b981, var(--tor-purple), var(--accent));
+      z-index: 1;
+    }
+
+    .node {
+      position: relative;
+      z-index: 2;
+      background: var(--surface);
+      border: 2px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      width: 22%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: all 0.3s;
+    }
+
+    .node.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .node-type {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .node-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 0.2rem;
+    }
+
+    .node-ip {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-top: 0.2rem;
+    }
+
+    /* Diagnostics & Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .stat-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 0.25rem;
+      font-family: var(--font-mono);
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--success);
+      margin-top: 0.2rem;
+    }
+
+    /* Rule Table */
+    .rule-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 0.75rem;
+    }
+
+    .rule-table th, .rule-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .rule-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .rule-table code {
+      font-family: var(--font-mono);
+      color: var(--accent);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--surface-border);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2rem;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="brand">
+      <div class="brand-icon">N</div>
+      <div class="brand-text">
+        <h1>Nipe Gateway</h1>
+        <span>Tor Transparent Routing Engine v1.0.0</span>
+      </div>
+    </a>
+    <div class="nav-stats">
+      <div id="statusPill" class="status-pill">
+        <span class="status-dot"></span>
+        <span id="statusText">TOR ACTIVE</span>
+      </div>
+      <span style="font-family: var(--font-mono); font-size: 0.85rem; color: #94a3b8;" id="headerIp">IP: 185.220.101.5</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Column: Terminal & Controls -->
+    <section class="card" id="terminalSection">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+          Interactive Nipe CLI
+        </div>
+        <span class="card-badge">perl nipe.pl</span>
+      </div>
+
+      <div class="terminal" id="terminal">
+        <div class="terminal-topbar">
+          <div class="term-btn red"></div>
+          <div class="term-btn yellow"></div>
+          <div class="term-btn green"></div>
+          <span class="term-title">bash - root@kali: /usr/src/nipe</span>
+        </div>
+        <div class="terminal-body" id="termOutput">
+          <div class="term-line">
+            <span class="term-prompt">root@kali:~#</span>
+            <span class="term-cmd">perl nipe.pl status</span>
+          </div>
+          <div class="term-out success">[+] Status: true (Tor Network Active)&#10;[+] Ip: 185.220.101.5 (Frankfurt, DE)&#10;[+] Gateway Mode: iptables Transparent Proxy&#10;[+] TransPort: 9051 | DNSPort: 9061</div>
+          <div class="term-line">
+            <span class="term-prompt">root@kali:~#</span>
+            <span class="term-cmd">_</span>
+          </div>
+        </div>
+        <div class="term-input-row">
+          <span class="term-prompt">#</span>
+          <input type="text" id="termInput" class="term-input" placeholder="Type a command (status, start, stop, restart, help)..." autocomplete="off" />
+          <button class="btn" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;" onclick="executeCommand()">Run</button>
+        </div>
+      </div>
+
+      <div class="controls-grid">
+        <button class="btn primary" onclick="runPreset('start')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Start Tor
+        </button>
+        <button class="btn danger" onclick="runPreset('stop')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+          Stop Tor
+        </button>
+        <button class="btn purple" onclick="runPreset('restart')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          New Circuit
+        </button>
+        <button class="btn" onclick="runPreset('status')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          Check Status
+        </button>
+      </div>
+    </section>
+
+    <!-- Right Column: Circuit & Diagnostics -->
+    <section class="card" id="circuitSection">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          Active Tor Circuit Topography
+        </div>
+        <span class="card-badge" id="circuitStatusBadge">3-HOP ENCRYPTED</span>
+      </div>
+
+      <div class="circuit-chain">
+        <div class="node active">
+          <div class="node-type">Origin</div>
+          <div class="node-title">Localhost</div>
+          <div class="node-ip">127.0.0.1</div>
+        </div>
+        <div class="node active">
+          <div class="node-type">Guard</div>
+          <div class="node-title">TorGuard-CH</div>
+          <div class="node-ip">178.17.170.8</div>
+        </div>
+        <div class="node active">
+          <div class="node-type">Middle</div>
+          <div class="node-title">Relay-NL</div>
+          <div class="node-ip">185.107.80.2</div>
+        </div>
+        <div class="node active">
+          <div class="node-type">Exit</div>
+          <div class="node-title" id="exitNodeName">ExitNode-DE</div>
+          <div class="node-ip" id="exitNodeIp">185.220.101.5</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Observed Public IP</div>
+          <div class="stat-val" id="dispIp">185.220.101.5</div>
+          <div class="stat-sub" id="dispTorStatus">✓ Tor Exit Node Confirmed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">DNS Routing & Leak Guard</div>
+          <div class="stat-val">127.0.0.1:9061</div>
+          <div class="stat-sub">✓ UDP/ICMP Leaks Blocked</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Transparent Proxy Port</div>
+          <div class="stat-val">9051</div>
+          <div class="stat-sub">TCP REDIRECT Active</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Circuit Latency</div>
+          <div class="stat-val" id="dispLatency">142 ms</div>
+          <div class="stat-sub">Bandwidth: 10.4 MB/s</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem;">
+        <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Active iptables Redirection Matrix</h4>
+        <table class="rule-table">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Chain</th>
+              <th>Target</th>
+              <th>Port / Condition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>nat</code></td>
+              <td>OUTPUT</td>
+              <td><code>REDIRECT</code></td>
+              <td>udp/tcp 53 -> port 9061 (Tor DNS)</td>
+            </tr>
+            <tr>
+              <td><code>nat</code></td>
+              <td>OUTPUT</td>
+              <td><code>REDIRECT</code></td>
+              <td>tcp -> port 9051 (TransPort)</td>
+            </tr>
+            <tr>
+              <td><code>filter</code></td>
+              <td>OUTPUT</td>
+              <td><code>ACCEPT</code></td>
+              <td>-o lo & 127.0.0.1/8 (Loopback)</td>
+            </tr>
+            <tr>
+              <td><code>filter</code></td>
+              <td>OUTPUT</td>
+              <td><code>REJECT</code></td>
+              <td>udp & icmp non-local traffic</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Nipe Engine v1.0.0 &bull; Licensed under MIT &bull; Maintained by <a href="https://github.com/Tagbirulmohoshin781/nipe" target="_blank">Tagbirulmohoshin781/nipe</a></p>
+  </footer>
+
+  <script>
+    let isTorActive = true;
+    let currentIp = "185.220.101.5";
+    const clearnetIp = "103.87.215.179";
+
+    const termOutput = document.getElementById("termOutput");
+    const termInput = document.getElementById("termInput");
+    const statusPill = document.getElementById("statusPill");
+    const statusText = document.getElementById("statusText");
+    const headerIp = document.getElementById("headerIp");
+    const dispIp = document.getElementById("dispIp");
+    const dispTorStatus = document.getElementById("dispTorStatus");
+    const circuitStatusBadge = document.getElementById("circuitStatusBadge");
+    const exitNodeIp = document.getElementById("exitNodeIp");
+    const exitNodeName = document.getElementById("exitNodeName");
+    const dispLatency = document.getElementById("dispLatency");
+
+    termInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        executeCommand();
+      }
+    });
+
+    function executeCommand() {
+      const cmd = termInput.value.trim();
+      if (!cmd) return;
+      termInput.value = "";
+
+      appendLine("root@kali:~#", cmd, false);
+
+      const parts = cmd.toLowerCase().split(/\s+/);
+      let action = parts[0];
+      if (parts[0] === "perl" || parts[0] === "./nipe.pl" || parts[0] === "nipe") {
+        action = parts[1] || "help";
+      }
+
+      processCommand(action);
+    }
+
+    function runPreset(action) {
+      appendLine("root@kali:~#", `perl nipe.pl ${action}`, false);
+      processCommand(action);
+    }
+
+    function processCommand(action) {
+      if (action === "status") {
+        if (isTorActive) {
+          appendOutput(`[+] Status: true (Tor Network Active)\n[+] Ip: ${currentIp}\n[+] Gateway Mode: iptables Transparent Proxy\n[+] TransPort: 9051 | DNSPort: 9061`, "success");
+        } else {
+          appendOutput(`[-] Status: false (Tor Network Inactive)\n[+] Ip: ${clearnetIp}\n[-] Traffic running in Direct Clearnet mode`, "err");
+        }
+      } else if (action === "start") {
+        isTorActive = true;
+        currentIp = getRandomTorIp();
+        updateUI();
+        appendOutput(`[*] Initializing Tor daemon...\n[*] Applying iptables & ip6tables routing rules...\n[*] Binding DNS redirect to port 9061 and TransPort to 9051...\n[+] Nipe started successfully. All network traffic is routed through Tor.\n[+] Status: true\n[+] Ip: ${currentIp}`, "success");
+      } else if (action === "stop") {
+        isTorActive = false;
+        currentIp = clearnetIp;
+        updateUI();
+        appendOutput(`[*] Flushing iptables nat & filter OUTPUT chains...\n[*] Restoring default policy to ACCEPT...\n[*] Stopping standalone Tor instance...\n[+] Nipe stopped. Tor routing disabled and original iptables rules reset.\n[-] Status: false\n[+] Clearnet Ip: ${clearnetIp}`, "err");
+      } else if (action === "restart") {
+        if (!isTorActive) isTorActive = true;
+        currentIp = getRandomTorIp();
+        updateUI();
+        appendOutput(`[*] Restarting Nipe routing and rebuilding Tor circuit...\n[*] Re-negotiating onion keys with new guard & exit nodes...\n[+] Circuit established!\n[+] Status: true (New Circuit)\n[+] New Exit Ip: ${currentIp}`, "success");
+      } else if (action === "install") {
+        appendOutput(`[*] Installing required system dependencies (tor, iptables, curl, ca-certificates)...\n[+] Dependencies successfully configured.`, "success");
+      } else if (action === "help" || action === "--help" || action === "-h") {
+        appendOutput(`Nipe - An Engine to make Tor Network your default gateway\n\nUsage: perl nipe.pl <command>\n\nCommands:\n  install       Install dependencies\n  start         Start routing through Tor\n  stop          Stop routing\n  restart       Restart circuit and refresh exit node\n  status        Display connection status and public IP\n  help          Show this manual\n\nOptions:\n  -h, --help    Show help message\n  -v, --version Show Nipe version`, "success");
+      } else if (action === "version" || action === "--version" || action === "-v") {
+        appendOutput(`Nipe version 1.0.0\nAn engine to make Tor Network your default gateway.`, "success");
+      } else {
+        appendOutput(`[!] ERROR: Unknown command '${action}'. Type 'help' for available commands.`, "err");
+      }
+    }
+
+    function getRandomTorIp() {
+      const ips = [
+        { ip: "185.220.101.5", node: "ExitNode-DE (Frankfurt)" },
+        { ip: "198.98.56.142", node: "ExitNode-US (New York)" },
+        { ip: "185.220.102.243", node: "ExitNode-SE (Stockholm)" },
+        { ip: "176.10.99.200", node: "ExitNode-CH (Zurich)" }
+      ];
+      const sel = ips[Math.floor(Math.random() * ips.length)];
+      exitNodeName.innerText = sel.node;
+      return sel.ip;
+    }
+
+    function updateUI() {
+      if (isTorActive) {
+        statusPill.className = "status-pill";
+        statusText.innerText = "TOR ACTIVE";
+        circuitStatusBadge.innerText = "3-HOP ENCRYPTED";
+        circuitStatusBadge.style.color = "var(--accent)";
+        dispTorStatus.innerText = "✓ Tor Exit Node Confirmed";
+        dispTorStatus.style.color = "var(--success)";
+        dispLatency.innerText = Math.floor(Math.random() * 40 + 120) + " ms";
+      } else {
+        statusPill.className = "status-pill inactive";
+        statusText.innerText = "CLEARNET DIRECT";
+        circuitStatusBadge.innerText = "CIRCUIT DISABLED";
+        circuitStatusBadge.style.color = "var(--danger)";
+        dispTorStatus.innerText = "✕ Clearnet Direct (Unprotected)";
+        dispTorStatus.style.color = "var(--danger)";
+        dispLatency.innerText = "18 ms";
+        exitNodeName.innerText = "Clearnet ISP";
+      }
+      headerIp.innerText = `IP: ${currentIp}`;
+      dispIp.innerText = currentIp;
+      exitNodeIp.innerText = currentIp;
+    }
+
+    function appendLine(prompt, cmd) {
+      const line = document.createElement("div");
+      line.className = "term-line";
+      line.innerHTML = `<span class="term-prompt">${prompt}</span> <span class="term-cmd">${escapeHtml(cmd)}</span>`;
+      termOutput.appendChild(line);
+      termOutput.scrollTop = termOutput.scrollHeight;
+    }
+
+    function appendOutput(text, type) {
+      const out = document.createElement("div");
+      out.className = `term-out ${type || ""}`;
+      out.innerText = text;
+      termOutput.appendChild(out);
+      termOutput.scrollTop = termOutput.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.innerText = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

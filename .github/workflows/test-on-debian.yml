@@ -1,0 +1,54 @@
+name: Test Nipe on Debian
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-debian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Debian smoke test
+        run: |
+          docker run --rm --privileged \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            debian:stable-slim \
+            sh -c '
+              set -eu
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                bash \
+                perl \
+                cpanminus \
+                gcc \
+                make \
+                iptables \
+                tor \
+                curl \
+                ca-certificates \
+                zlib1g-dev \
+                libssl-dev \
+                libio-socket-ssl-perl \
+                libnet-ssleay-perl
+              mkdir -p /tmp/nipe-ci-bin /var/run/tor /run/tor /var/log/tor
+              touch /var/log/tor/log
+              chown debian-tor:debian-tor /var/run/tor /run/tor /var/log/tor /var/log/tor/log
+              printf "%s\n" "#!/bin/sh" "exit 0" > /tmp/nipe-ci-bin/systemctl
+              chmod +x /tmp/nipe-ci-bin/systemctl
+              export PATH=/tmp/nipe-ci-bin:$PATH
+              cpanm --notest --installdeps .
+              perl nipe.pl install
+              status_output=$(perl nipe.pl status || true)
+              printf "%s\n" "$status_output"
+              printf "%s" "$status_output" | grep -F "[+] Status:"
+              printf "%s" "$status_output" | grep -F "[+] Ip:"
+            '

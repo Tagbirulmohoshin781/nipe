@@ -1,0 +1,45 @@
+# Nipe .gitignore
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Perl & CPAN artifacts
+local/
+perl5/
+blib/
+_build/
+Build
+Build.bat
+MYMETA.*
+pm_to_blib
+*.bak
+*.backup
+*.old
+
+# Tor runtime & PID files
+*.pid
+tor.pid
+*.authcookie
+
+# Secrets & Environment
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.secret
+
+# Logs & Test outputs
+*.log
+test_reports/
+test-reports/
+coverage/
+scratch/

@@ -1,0 +1,22 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Explicitly ensure Linux scripts and config files use LF line endings
+*.pl text eol=lf
+*.pm text eol=lf
+*.t text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+cpanfile text eol=lf
+*.md text eol=lf
+.configs/* text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary

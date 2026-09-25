@@ -1,0 +1,52 @@
+name: Test Nipe on Fedora
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-fedora:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Fedora smoke test
+        run: |
+          docker run --rm --privileged \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            fedora:latest \
+            sh -c '
+              set -eu
+              dnf -y install \
+                bash \
+                perl \
+                perl-App-cpanminus \
+                gcc \
+                make \
+                iptables \
+                tor \
+                curl \
+                ca-certificates \
+                openssl-devel \
+                perl-IO-Socket-SSL \
+                perl-Net-SSLeay
+              mkdir -p /tmp/nipe-ci-bin /var/run/tor /run/tor /var/log/tor
+              touch /var/log/tor/log
+              chown toranon:toranon /var/run/tor /run/tor /var/log/tor /var/log/tor/log
+              printf "%s\n" "#!/bin/sh" "exit 0" > /tmp/nipe-ci-bin/systemctl
+              chmod +x /tmp/nipe-ci-bin/systemctl
+              export PATH=/tmp/nipe-ci-bin:$PATH
+              cpanm --notest --installdeps .
+              perl nipe.pl install
+              status_output=$(perl nipe.pl status || true)
+              printf "%s\n" "$status_output"
+              printf "%s" "$status_output" | grep -F "[+] Status:"
+              printf "%s" "$status_output" | grep -F "[+] Ip:"
+            '
